@@ -19,7 +19,7 @@ class UnderstandingService:
         is_bangla = detect_is_bangla(complaint)
         lang = "bn" if is_bangla else "en"
         # Simple Banglish detector (checks for English alphabet with common Bangla sounds)
-        banglish_keywords = ["taka", "pathaisi", "kete", "nise", "bhul", "kore", "dhaka", "chengel", "bikas"]
+        banglish_keywords = ["pathaisi", "kete", "nise", "bhul", "kore", "bikas", "takar", "somossa", "hoyese"]
         if not is_bangla and any(kw in complaint_lower for kw in banglish_keywords):
             lang = "mixed"
             
