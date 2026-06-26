@@ -212,13 +212,51 @@ class LLMClientService:
                 
         # Bangla templates
         else:
-            if case_type == CaseType.AGENT_CASH_IN_ISSUE:
+            # We keep internal agent notes (summary, action) in English as standard practice, 
+            # and output the customer reply in Bangla.
+            if case_type == CaseType.WRONG_TRANSFER:
+                if verdict == EvidenceVerdict.CONSISTENT:
+                    summary = f"Customer reports sending money via {txn_str} to a wrong recipient who is now unresponsive."
+                    action = f"Verify {txn_str} details with the customer and initiate the wrong-transfer dispute workflow per policy."
+                    reply = f"আমরা আপনার লেনদেন {txn_str} সংক্রান্ত সমস্যাটি নথিভুক্ত করেছি। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না। আমাদের বিরোধ নিষ্পত্তি দল কেসটি পর্যালোচনা করবে এবং অফিশিয়াল চ্যানেলে আপনার সাথে যোগাযোগ করবে।"
+                else:
+                    summary = f"Customer claims {txn_str} was a wrong transfer, but transaction history shows prior transfers to the same counterparty, suggesting an established recipient."
+                    action = f"Flag for human review. Verify with the customer whether this was genuinely a wrong transfer given the established pattern."
+                    reply = f"আমরা লেনদেন {txn_str} সংক্রান্ত আপনার অনুরোধটি পেয়েছি। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না। আমাদের বিরোধ নিষ্পত্তি দল কেসটি সতর্কতার সাথে পর্যালোচনা করবে এবং অফিশিয়াল চ্যানেলে আপনার সাথে যোগাযোগ করবে।"
+                    
+            elif case_type == CaseType.PAYMENT_FAILED:
+                summary = f"Customer reports deduction of balance for a failed payment transaction {txn_str}."
+                action = f"Investigate {txn_str} ledger status. If balance was deducted on a failed payment, initiate the automatic reversal flow."
+                reply = f"আমরা লক্ষ্য করেছি যে লেনদেন {txn_str} এর কারণে আপনার ব্যালেন্স কেটে নেওয়া হতে পারে। আমাদের পেমেন্ট দল কেসটি পর্যালোচনা করবে এবং যেকোনো যোগ্য পরিমাণ অফিশিয়াল চ্যানেলের মাধ্যমে ফেরত দেওয়া হবে। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
+                
+            elif case_type == CaseType.REFUND_REQUEST:
+                summary = f"Customer requests refund for completed payment {txn_str} due to change of mind."
+                action = "Inform the customer that refund eligibility depends on the merchant's policy. Direct customer to contact the merchant."
+                reply = f"যোগাযোগ করার জন্য ধন্যবাদ। সম্পন্ন হওয়া মার্চেন্ট পেমেন্টের রিফান্ড মার্চেন্টের নিজস্ব পলিসির ওপর নির্ভর করে। আমরা সরাসরি মার্চেন্টের সাথে যোগাযোগ করার পরামর্শ দিচ্ছি। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
+                
+            elif case_type == CaseType.DUPLICATE_PAYMENT:
+                summary = f"Customer reports duplicate payment. Two identical payments completed close together, with {txn_str} suspected as the duplicate."
+                action = f"Verify the duplicate with payments_ops. If confirmed, initiate reversal of {txn_str} per policy."
+                reply = f"আমরা লেনদেন {txn_str} এর সম্ভাব্য ডুপ্লিকেট পেমেন্টটি লক্ষ্য করেছি। আমাদের পেমেন্ট দল বিলারের সাথে এটি যাচাই করবে এবং যেকোনো যোগ্য পরিমাণ অফিশিয়াল চ্যানেলের মাধ্যমে ফেরত দেওয়া হবে। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
+                
+            elif case_type == CaseType.MERCHANT_SETTLEMENT_DELAY:
+                summary = f"Merchant reports that settlement {txn_str} is pending beyond the standard settlement window."
+                action = f"Route to merchant_operations to verify settlement batch status and update the merchant."
+                reply = f"আমরা সেটেলমেন্ট {txn_str} সংক্রান্ত আপনার সমস্যাটি লক্ষ্য করেছি। আমাদের মার্চেন্ট অপারেশন্স দল ব্যাচের স্ট্যাটাস চেক করবে এবং অফিশিয়াল চ্যানেলের মাধ্যমে আপনাকে সম্ভাব্য সেটেলমেন্টের সময় জানিয়ে দেবে।"
+                
+            elif case_type == CaseType.AGENT_CASH_IN_ISSUE:
                 summary = f"Customer reports cash-in transaction {txn_str} not reflected in balance. Transaction status is pending."
                 action = f"Investigate {txn_str} pending status with agent operations. Confirm settlement state."
-                reply = f"আপনার লেনদেন {txn_str} এর বিষয়ে আমরা অবগত হয়েছি। আমাদের এজেন্ট অপারেশন্স দল এটি দ্রুত যাচাই করবে এবং অফিসিয়াল চ্যানেলে আপনাকে জানাবে। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
-            else: # general fallback for other Bangla cases
-                summary = f"Customer reports an issue in Bangla concerning {txn_str}."
-                action = f"Review Bangla complaint and matching transaction {txn_str}."
-                reply = f"আপনার অভিযোগটি আমরা নথিভুক্ত করেছি। আমাদের টিম এটি দ্রুত যাচাই করবে এবং অফিশিয়াল চ্যানেলে আপনাকে আপডেট জানাবে। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
+                reply = f"আপনার লেনদেন {txn_str} এর বিষয়ে আমরা অবগত হয়েছি। আমাদের এজেন্ট অপারেশন্স দল এটি দ্রুত যাচাই করবে এবং অফিসিয়াল চ্যানেলে আপনাকে জানাবে। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
+                
+            elif case_type == CaseType.PHISHING_OR_SOCIAL_ENGINEERING:
+                summary = "Customer reports receiving an unsolicited call or message asking for OTP/PIN credentials."
+                action = "Escalate to fraud_risk team immediately. Confirm to customer that we never ask for credentials."
+                reply = "কোনো তথ্য শেয়ার করার আগে আমাদের সাথে যোগাযোগ করার জন্য ধন্যবাদ। আমরা কোনো অবস্থাতেই আপনার পিন, ওটিপি বা পাসওয়ার্ড চাই না। এমনকি কেউ আমাদের পরিচয় দিলেও দয়া করে এগুলো শেয়ার করবেন না। আমাদের জালিয়াতি প্রতিরোধ দলকে বিষয়টি জানানো হয়েছে।"
+                
+            else: # other / vague
+                summary = "Customer reports a concern about their money without specifying transaction details."
+                action = "Reply to customer asking for specific details: transaction ID, amount, and time."
+                reply = "আমাদের সাথে যোগাযোগ করার জন্য ধন্যবাদ। আপনাকে দ্রুত সাহায্য করতে দয়া করে লেনদেন আইডি, টাকার পরিমাণ এবং কী সমস্যা হয়েছিল তা সংক্ষেপে শেয়ার করুন। অনুগ্রহ করে কারো সাথে আপনার পিন বা ওটিপি শেয়ার করবেন না।"
 
         return summary, action, reply
